@@ -1,0 +1,46 @@
+services:
+  redpanda:
+    image: redpandadata/redpanda:v24.1.8
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --memory
+      - 1G
+      - --reserve-memory
+      - 0M
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:9092
+    ports:
+      - "9092:9092"
+
+  api:
+    build: .
+    environment:
+      ROUTIER_DATA_DIR: /var/lib/routier
+    volumes:
+      - routier_data:/var/lib/routier
+    ports:
+      - "8080:8080"
+
+  worker:
+    build: .
+    command: ["python", "-m", "routier.worker"]
+    environment:
+      ROUTIER_API_URL: http://api:8080
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      KAFKA_TOPIC: vehicle.telemetry.v1
+      KAFKA_INVALID_TOPIC: vehicle.telemetry.invalid.v1
+    depends_on:
+      - redpanda
+      - api
+
+volumes:
+  routier_data:

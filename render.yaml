@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: routier-ikel
+    runtime: docker
+    plan: free
+    healthCheckPath: /health

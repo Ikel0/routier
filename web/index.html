@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Routier · Ops desk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar"><a class="mark" href="/">routier<span>.</span></a><p>OPS DESK / démonstration synthétique</p><span class="state"><i></i> système disponible</span></header>
+  <main>
+    <section class="intro">
+      <div><p class="eyebrow">PLATEFORME D'EXPLOITATION</p><h1>Voir le service<br>avant que la ligne<br>ne décroche.</h1></div>
+      <div class="intro-copy"><p>Une chaîne courte, pensée pour les équipes qui doivent transformer de la télémétrie véhicule en priorités de terrain. Chaque signal garde son motif et son horodatage.</p><button id="demo">Charger un service de démonstration <b>↗</b></button></div>
+    </section>
+    <section class="metrics" aria-label="Indicateurs de service"><article><span>Événements intégrés</span><strong id="events">0</strong></article><article><span>Alertes à traiter</span><strong id="alerts">0</strong></article><article><span>Lignes observées</span><strong id="routes">0</strong></article><article class="pipeline"><span>Parcours</span><strong>topic → contrôle → ops</strong></article></section>
+    <section class="desk">
+      <div class="map"><div class="map-head"><p>RÉSEAU OBSERVÉ</p><span>MAJ <time id="updated">maintenant</time></span></div><div class="lines"><i class="line l1"></i><i class="line l2"></i><i class="line l3"></i><span class="stop s1">M2</span><span class="stop s2">B7</span><span class="stop s3">T3</span><span class="ping p1"></span><span class="ping p2"></span><span class="ping p3"></span></div><p class="map-note">La carte est une représentation de démonstration. La décision est portée par le contrat et non par l'illustration.</p></div>
+      <div class="queue"><div class="queue-head"><p>FILE D'ATTENTION</p><span id="queue-count">0 alertes</span></div><div id="alert-list" class="alert-list"><p class="empty">Aucun signal à traiter. Chargez le jeu de démonstration pour voir le parcours.</p></div></div>
+    </section>
+    <section class="events-section"><div class="section-head"><p>DERNIERS ÉVÉNEMENTS</p><span>contrat <code>vehicle.telemetry.v1</code></span></div><div class="table-wrap"><table><thead><tr><th>HEURE</th><th>VÉHICULE</th><th>LIGNE</th><th>RETARD</th><th>CHARGE</th><th>ÉTAT</th></tr></thead><tbody id="event-list"></tbody></table></div></section>
+  </main>
+  <footer><span>Routier / prototype de recherche appliquée</span><span>Kafka-compatible · contrat versionné · décisions explicables</span></footer>
+  <script src="/app.js"></script>
+</body>
+</html>

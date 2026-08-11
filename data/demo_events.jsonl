@@ -1,0 +1,4 @@
+{"event_id":"demo-101","vehicle_id":"R-204","route_id":"M2","recorded_at":"2026-08-11T08:15:00Z","delay_seconds":72,"occupancy_percent":48,"status":"in_service","latitude":48.857,"longitude":2.352}
+{"event_id":"demo-102","vehicle_id":"R-118","route_id":"M2","recorded_at":"2026-08-11T08:17:00Z","delay_seconds":418,"occupancy_percent":91,"status":"in_service","latitude":48.861,"longitude":2.367}
+{"event_id":"demo-103","vehicle_id":"R-076","route_id":"B7","recorded_at":"2026-08-11T08:19:00Z","delay_seconds":1030,"occupancy_percent":38,"status":"disrupted","latitude":48.845,"longitude":2.339}
+{"event_id":"demo-104","vehicle_id":"R-309","route_id":"T3","recorded_at":"2026-08-11T08:21:00Z","delay_seconds":24,"occupancy_percent":63,"status":"in_service","latitude":48.873,"longitude":2.314}
