@@ -11,7 +11,8 @@ from urllib.parse import urlparse
 
 from .contract import ContractError, validate_event
 from .decision import assess
-from .store import alerts, overview, save_event
+from .sources import fetch_sncf_service_alerts
+from .store import alerts, overview, save_event, save_snapshot, sources
 
 ROOT = Path(__file__).resolve().parents[2]
 WEB = ROOT / "web"
@@ -38,6 +39,8 @@ class Handler(SimpleHTTPRequestHandler):
             self._json(HTTPStatus.OK, overview())
         elif path == "/api/alerts":
             self._json(HTTPStatus.OK, alerts())
+        elif path == "/api/sources":
+            self._json(HTTPStatus.OK, {"sources": sources()})
         else:
             if path == "/":
                 self.path = "/index.html"
@@ -50,6 +53,14 @@ class Handler(SimpleHTTPRequestHandler):
             for line in DATA.read_text(encoding="utf-8").splitlines():
                 outcomes.append(_ingest(json.loads(line)))
             self._json(HTTPStatus.CREATED, {"inserted": sum(item["inserted"] for item in outcomes), "events": outcomes})
+            return
+        if path == "/api/sources/sncf/sync":
+            try:
+                snapshot = fetch_sncf_service_alerts()
+                snapshot["inserted"] = save_snapshot(snapshot)
+                self._json(HTTPStatus.CREATED, snapshot)
+            except (OSError, ValueError) as exc:
+                self._json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "SNCF source unavailable", "detail": str(exc)})
             return
         if path != "/api/events":
             self._json(HTTPStatus.NOT_FOUND, {"error": "unknown endpoint"})

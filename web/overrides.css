@@ -1,0 +1,43 @@
+/* External-source panel: compact operational controls layered over the base interface. */
+.section-head {
+  gap: 18px;
+}
+
+.section-head > div {
+  min-width: 0;
+}
+
+.section-head button {
+  flex: none;
+  padding: 10px 13px;
+  font: 700 10px 'DM Mono', monospace;
+  letter-spacing: .03em;
+}
+
+.section-head button:disabled {
+  cursor: wait;
+  opacity: .72;
+  transform: none;
+}
+
+.events-section a {
+  color: var(--green);
+  font-weight: 700;
+  text-decoration-color: #a5bba4;
+  text-underline-offset: 3px;
+}
+
+.events-section a:hover {
+  color: var(--signal);
+}
+
+@media (max-width: 760px) {
+  .section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .section-head button {
+    width: 100%;
+  }
+}

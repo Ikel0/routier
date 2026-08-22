@@ -20,9 +20,36 @@ async function refresh() {
   render(await response.json());
 }
 
+function renderSources(payload) {
+  const rows = payload.sources || [];
+  document.querySelector('#source-list').innerHTML = rows.length ? rows.map(source => `<tr><td><a href="${escapeHtml(source.source_url)}" target="_blank" rel="noopener">${escapeHtml(source.source)} ↗</a></td><td>${escapeHtml(source.format)}</td><td>${fmt.format(source.entity_count)}</td><td>${fmt.format(source.byte_size)} octets</td><td><code>${escapeHtml(source.checksum)}</code></td><td>${time(source.captured_at)}</td></tr>`).join('') : '<tr><td colspan="6">Aucune photographie externe capturée.</td></tr>';
+}
+
+async function refreshSources() {
+  const response = await fetch('/api/sources');
+  renderSources(await response.json());
+}
+
 document.querySelector('#demo').addEventListener('click', async event => {
   const button = event.currentTarget; button.disabled = true; button.textContent = 'Injection en cours…';
   await fetch('/api/demo', {method:'POST'}); await refresh();
   button.textContent = 'Service de démonstration chargé';
 });
+document.querySelector('#sync-sncf').addEventListener('click', async event => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  button.textContent = 'Synchronisation…';
+  try {
+    const response = await fetch('/api/sources/sncf/sync', {method:'POST'});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Source indisponible');
+    button.textContent = data.inserted ? `${data.entity_count} entités enregistrées` : 'Photographie déjà connue';
+    await refreshSources();
+  } catch (error) {
+    button.textContent = error.message;
+  } finally {
+    window.setTimeout(() => { button.disabled = false; button.textContent = 'Synchroniser le feed SNCF'; }, 2200);
+  }
+});
 refresh();
+refreshSources();
