@@ -3,29 +3,99 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Routier · Ops desk</title>
+  <meta name="description" content="Routier, control plane de supervision événementielle pour opérations transport.">
+  <title>Routier · Control plane</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
-  <link rel="stylesheet" href="/overrides.css">
 </head>
 <body>
-  <header class="topbar"><a class="mark" href="/">routier<span>.</span></a><p>OPS DESK / démonstration synthétique</p><span class="state"><i></i> système disponible</span></header>
+  <header class="topbar">
+    <a class="mark" href="/" aria-label="Routier, accueil">routier<span>.</span></a>
+    <p>CONTROL PLANE / OPÉRATIONS TRANSPORT</p>
+    <div class="system-state"><i></i><span id="readiness">vérification du système</span></div>
+  </header>
+
   <main>
-    <section class="intro">
-      <div><p class="eyebrow">PLATEFORME D'EXPLOITATION</p><h1>Voir le service<br>avant que la ligne<br>ne décroche.</h1></div>
-      <div class="intro-copy"><p>Une chaîne courte, pensée pour les équipes qui doivent transformer de la télémétrie véhicule en priorités de terrain. Chaque signal garde son motif et son horodatage.</p><button id="demo">Charger un service de démonstration <b>↗</b></button></div>
+    <section class="hero">
+      <div class="hero-title">
+        <p class="eyebrow">SYNTHETIC OPERATIONS SANDBOX</p>
+        <h1>Décider sur<br>des signaux<br><em>traçables.</em></h1>
+      </div>
+      <div class="hero-copy">
+        <p>Routier est un control plane événementiel : il valide un contrat, absorbe les relectures, priorise les situations de service et conserve le chemin de chaque décision.</p>
+        <div class="hero-actions">
+          <button id="demo" type="button">Charger le scénario <b>↗</b></button>
+          <button id="sync-sncf" type="button" class="quiet-button">Capturer le feed SNCF</button>
+        </div>
+        <p class="disclosure">Les positions véhicule sont simulées. Le feed SNCF est une source externe distincte, limitée ici à ses métadonnées de provenance.</p>
+      </div>
     </section>
-    <section class="metrics" aria-label="Indicateurs de service"><article><span>Événements intégrés</span><strong id="events">0</strong></article><article><span>Alertes à traiter</span><strong id="alerts">0</strong></article><article><span>Lignes observées</span><strong id="routes">0</strong></article><article class="pipeline"><span>Parcours</span><strong>topic → contrôle → ops</strong></article></section>
-    <section class="desk">
-      <div class="map"><div class="map-head"><p>RÉSEAU OBSERVÉ</p><span>MAJ <time id="updated">maintenant</time></span></div><div class="lines"><i class="line l1"></i><i class="line l2"></i><i class="line l3"></i><span class="stop s1">M2</span><span class="stop s2">B7</span><span class="stop s3">T3</span><span class="ping p1"></span><span class="ping p2"></span><span class="ping p3"></span></div><p class="map-note">La carte est une représentation de démonstration. La décision est portée par le contrat et non par l'illustration.</p></div>
-      <div class="queue"><div class="queue-head"><p>FILE D'ATTENTION</p><span id="queue-count">0 alertes</span></div><div id="alert-list" class="alert-list"><p class="empty">Aucun signal à traiter. Chargez le jeu de démonstration pour voir le parcours.</p></div></div>
+
+    <section class="metrics" aria-label="Indicateurs d'ingestion">
+      <article><span>ACCEPTÉS</span><strong id="metric-accepted">0</strong><small>écritures au sink</small></article>
+      <article><span>DOUBLONS</span><strong id="metric-duplicates">0</strong><small>relectures absorbées</small></article>
+      <article><span>REJETS</span><strong id="metric-rejected">0</strong><small>contrat ou format</small></article>
+      <article class="metric-alert"><span>ALERTES OUVERTES</span><strong id="metric-alerts">0</strong><small>à prendre en charge</small></article>
     </section>
-    <section class="events-section"><div class="section-head"><div><p>PROVENANCE EXTERNE</p><span>photographies de flux ouvertes, distinctes de la télémétrie métier</span></div><button id="sync-sncf">Synchroniser le feed SNCF</button></div><div class="table-wrap"><table><thead><tr><th>SOURCE</th><th>FORMAT</th><th>ENTITÉS</th><th>VOLUME</th><th>EMPREINTE</th><th>CAPTURE</th></tr></thead><tbody id="source-list"><tr><td colspan="6">Aucune photographie externe capturée.</td></tr></tbody></table></div></section>
-    <section class="events-section"><div class="section-head"><p>DERNIERS ÉVÉNEMENTS</p><span>contrat <code>vehicle.telemetry.v1</code></span></div><div class="table-wrap"><table><thead><tr><th>HEURE</th><th>VÉHICULE</th><th>LIGNE</th><th>RETARD</th><th>CHARGE</th><th>ÉTAT</th></tr></thead><tbody id="event-list"></tbody></table></div></section>
+
+    <section class="control-strip" aria-label="Garantie de livraison">
+      <div><p>DELIVERY SEMANTICS</p><strong id="delivery-semantics">at least once</strong><span>Le worker commite après écriture ou rejet confirmé.</span></div>
+      <div><p>CONTRAT ACTIF</p><strong id="contract-name">vehicle.telemetry.v1.0</strong><span>Validation avant toute décision métier.</span></div>
+      <div><p>DEAD LETTER</p><strong id="dead-letter-topic">vehicle.telemetry.invalid.v1</strong><span>Les messages non conformes restent inspectables.</span></div>
+      <div><p>DERNIÈRE ACTIVITÉ</p><strong id="last-activity">aucune</strong><span>Trace d'ingestion et d'exploitation.</span></div>
+    </section>
+
+    <section class="operations-grid">
+      <article class="network-card">
+        <div class="section-kicker"><p>LECTURE DU RÉSEAU</p><span>SCÉNARIO DE DÉMONSTRATION</span></div>
+        <div class="network-map" role="img" aria-label="Schéma illustratif des lignes M2, B7 et T3">
+          <i class="route route-m2"></i><i class="route route-b7"></i><i class="route route-t3"></i>
+          <span class="station m2-a">M2</span><span class="station m2-b">M2</span><span class="station b7">B7</span><span class="station t3">T3</span>
+          <span class="signal signal-m2"></span><span class="signal signal-b7"></span><span class="signal signal-t3"></span>
+          <div class="network-legend"><span><i class="legend-dot critical"></i>critique</span><span><i class="legend-dot watch"></i>surveillance</span><span><i class="legend-dot nominal"></i>nominal</span></div>
+        </div>
+        <p class="network-note">L'illustration ne déclenche aucune règle. Les règles s'exécutent sur le contrat <code>vehicle.telemetry.v1.0</code> et restent visibles dans la trace.</p>
+      </article>
+
+      <article class="attention-card">
+        <div class="section-kicker"><p>FILE D'ATTENTION</p><span id="queue-count">0 active</span></div>
+        <div id="alert-list" class="alert-list"><p class="empty">Aucune alerte active. Charge le scénario pour suivre une décision de bout en bout.</p></div>
+        <p class="sandbox-note">Accuser réception simule un geste opérateur et l’inscrit dans l’audit. Il n’y a pas encore d’authentification utilisateur dans cette sandbox.</p>
+      </article>
+    </section>
+
+    <section class="data-section">
+      <div class="section-heading"><div><p>JOURNAL D'INGESTION</p><h2>Chaque message laisse une <em>preuve exploitable.</em></h2></div><span>mise à jour <time id="updated">maintenant</time></span></div>
+      <div class="table-wrap"><table><thead><tr><th>HEURE</th><th>TRACE</th><th>ÉVÉNEMENT</th><th>ORIGINE</th><th>ÉTAT</th><th>MOTIF</th></tr></thead><tbody id="audit-list"><tr><td colspan="6">Le journal attend sa première activité.</td></tr></tbody></table></div>
+    </section>
+
+    <section class="split-data-section">
+      <article class="data-section source-section">
+        <div class="section-heading"><div><p>PROVENANCE EXTERNE</p><h2>Une source ouverte, <em>sans faux raccourci.</em></h2></div><span id="source-status">aucune capture</span></div>
+        <p class="section-copy">Le feed SNCF GTFS-RT sert à tester l'adaptateur, sa fraîcheur et son empreinte. Ses messages de service ne sont jamais présentés comme des positions véhicule.</p>
+        <div class="table-wrap"><table><thead><tr><th>SOURCE</th><th>ENTITÉS</th><th>VOLUME</th><th>EMPREINTE</th><th>CAPTURE</th></tr></thead><tbody id="source-list"><tr><td colspan="5">Aucune photographie externe capturée.</td></tr></tbody></table></div>
+      </article>
+
+      <article class="data-section event-section">
+        <div class="section-heading"><div><p>ÉTAT DU SERVICE</p><h2>Décisions <em>relisibles.</em></h2></div><span id="event-count">0 événement</span></div>
+        <div class="table-wrap"><table><thead><tr><th>VÉHICULE</th><th>LIGNE</th><th>PRIORITÉ</th><th>RÈGLES</th><th>STATUT</th></tr></thead><tbody id="event-list"><tr><td colspan="5">Le tableau attend son premier événement.</td></tr></tbody></table></div>
+      </article>
+    </section>
+
+    <section class="runbook">
+      <div><p>RUNBOOK / PREMIER INCRÉMENT</p><h2>Une alerte est utile si son <em>traitement est clair.</em></h2></div>
+      <ol>
+        <li><span>01</span><p><strong>Lire les motifs.</strong> Retard, disponibilité et charge sont évalués séparément.</p></li>
+        <li><span>02</span><p><strong>Vérifier la trace.</strong> L'origine, le résultat d'ingestion et l'identifiant de corrélation restent consultables.</p></li>
+        <li><span>03</span><p><strong>Prendre en charge.</strong> L'accusé est une action distincte de la détection, conservée dans l'audit.</p></li>
+      </ol>
+    </section>
   </main>
-  <footer><span>Routier / prototype de recherche appliquée</span><span>Kafka-compatible · contrat versionné · décisions explicables</span></footer>
+
+  <footer><span>Routier / projet de recherche appliquée</span><span>Kafka-compatible · contrat versionné · audit · décisions explicables</span></footer>
+  <noscript>Routier nécessite JavaScript pour actualiser le tableau d'opérations.</noscript>
   <script src="/app.js"></script>
 </body>
 </html>

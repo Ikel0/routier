@@ -1,45 +1,46 @@
-# Working paper 01 : rendre une alerte exploitable
+# Working paper 01 : construire une alerte qui tient à la relecture
 
-## Question de départ
+## Problème
 
-Une équipe opérations reçoit des positions et statuts véhicule toutes les quelques secondes. Comment éviter de traiter chaque message comme une alerte, tout en gardant une trace contrôlable des situations qui comptent ?
+Les signaux opérationnels n'ont de valeur que si une équipe peut répondre à quatre questions : quel message a déclenché la situation, quelle règle a été appliquée, le même message peut-il être rejoué sans dégâts, et qui a pris la situation en charge ?
 
-## Hypothèse de travail
+Routier est une expérimentation autour de cette chaîne minimale. Le périmètre est volontairement étroit pour que les garanties soient observables, testables et discutables.
 
-Un petit contrat versionné, des règles de décision transparentes et un circuit de rejet lisible donnent plus de valeur au premier incrément qu'un tableau sophistiqué sans frontière de données.
+## Hypothèse
 
-## Proposition
+Un contrat de données strict, un worker at least once, un sink idempotent et un journal de décision apportent davantage de confiance qu'une projection de "temps réel" dont on ne peut ni vérifier la provenance ni rejouer les effets.
 
-Routier consomme `vehicle.telemetry.v1`. Avant d'intégrer un événement dans le tableau, le worker vérifie : identifiants, horodatage, bornes de charge, coordonnées et statut. Les événements non conformes sont envoyés vers un topic de rejet avec une raison. Les événements conformes passent dans un moteur de règles volontairement explicite :
+## Décisions
 
-- surveillance à partir de 5 minutes de retard ou 85 % de charge ;
-- niveau critique à partir de 15 minutes de retard, 95 % de charge, ou d'un service hors exploitation ;
-- aucune alerte quand le service est nominal.
-
-## Décisions d'architecture
-
-| Décision | Raisonnement | Limite assumée |
+| Décision | Pourquoi | Limite assumée |
 | --- | --- | --- |
-| Kafka-compatible via Redpanda | Rejouabilité et découplage producteur/consommateur | Pas de schema registry dans cette itération |
-| API Python légère | Démonstration lisible, exécution facile | Remplacer SQLite en multi-instance |
-| Règles déterministes | Chaque alerte est justifiable par une équipe métier | La calibration vient après observation réelle |
-| Jeu synthétique | Pas de données ou de promesses de transport réel | Ne mesure pas encore la performance métier |
-| Feed GTFS-RT SNCF | Une source ouverte permet de démontrer la provenance et la fraîcheur | Les messages de service ne sont pas assimilés à de la télémétrie véhicule |
+| Contrat `vehicle.telemetry.v1.0` | Rendre les attendus explicites à la frontière du système | Pas de schema registry dans cette itération |
+| Commit Kafka manuel | Ne pas perdre un offset avant l'effet durable aval | Un message peut être reconsommé |
+| `event_id` unique au sink | Transformer la relecture en résultat `duplicate` | Un producteur doit fournir un identifiant stable |
+| Règles et score de priorité déterministes | Pouvoir expliquer chaque alerte au métier | Les seuils ne sont pas encore calibrés sur un historique réel |
+| Audit séparé des événements | Distinguer accepté, doublon, rejet et accusé | Pas encore de politique de rétention ni export analytique |
+| Feed SNCF GTFS-RT limité aux métadonnées | Démontrer la provenance sans inventer une corrélation métier | Aucun rapprochement avec la télémétrie de démonstration |
 
-## Frontière entre démonstration et source externe
+## Modèle de livraison
 
-L'interface peut synchroniser le flux public SNCF GTFS-RT Service Alerts. Routier enregistre alors une photographie minimale : URL, instant de capture, taille, nombre d'entités et empreinte du contenu. Le flux binaire n'est pas conservé dans cette version. Il sert à prouver qu'un adaptateur externe fonctionne et que sa provenance est visible, sans inventer de précision sur les véhicules ou les retards.
+```text
+Kafka record
+  -> validation
+  -> API idempotente ou DLQ confirmée
+  -> commit du consumer
+```
 
-Une future corrélation serait un sujet de recherche à part entière : elle demanderait une clé de rapprochement explicite, un historique conservé avec une politique de rétention, ainsi qu'une évaluation des faux rapprochements. Elle ne doit pas être ajoutée comme un simple effet visuel au tableau.
+Si l'API devient indisponible, le worker ne commite pas. Au redémarrage, Kafka redélivre le message. Si la première écriture avait réussi juste avant la coupure, l'API renvoie `duplicate` sur la deuxième tentative et la nouvelle consommation peut être commitée. Cette combinaison est plus honnête que de prétendre atteindre exactly once sans infrastructure de transaction distribuée.
 
 ## Protocole de revue
 
-1. Lancer les tests de contrat.
-2. Démarrer la pile Docker.
-3. Publier le jeu synthétique sur le topic.
-4. Vérifier que les trois véhicules à risque apparaissent avec le bon motif.
-5. Injecter un événement malformé et vérifier sa présence dans le topic de rejet.
+1. Lancer les 11 tests de la suite.
+2. Charger le scénario de démonstration.
+3. Le charger à nouveau et constater quatre doublons, sans nouveau véhicule ni nouvelle alerte.
+4. Envoyer un corps JSON incomplet à `POST /api/events` et contrôler le rejet 422 dans le journal.
+5. Accuser l'alerte critique puis vérifier qu'elle sort de la file active mais reste visible dans l'historique.
+6. Synchroniser la provenance SNCF et vérifier que seule la photographie de source est stockée.
 
 ## Suite de recherche
 
-La prochaine version comparerait la précision des règles avec un modèle de prévision de retard, et ajouterait des traces OpenTelemetry pour mesurer le délai événement-vers-tableau et le taux de rejet par source.
+Une prochaine itération introduirait un registry de schémas, des métriques OpenTelemetry, des SLO de fraîcheur et de taux de rejet, une identité opérateur, puis un stockage relationnel capable de gérer plusieurs instances. Avant tout modèle prédictif, elle demanderait un historique métier gouverné et une définition partagée des faux positifs acceptables.
