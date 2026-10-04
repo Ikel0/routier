@@ -94,7 +94,23 @@ def save_event(
             ),
         )
         conn.commit()
-        return {"inserted": cursor.rowcount == 1, "ingested_at": ingested_at}
+        if cursor.rowcount == 1:
+            return {"inserted": True, "ingested_at": ingested_at, "decision": verdict}
+        # Rejeu : la première version reste en base. On renvoie la décision enregistrée,
+        # pas celle calculée sur le contenu rejoué, pour que la réponse décrive l'état réel.
+        row = conn.execute(
+            """SELECT severity, priority_score, reasons, rule_ids, decision_version, ingested_at
+            FROM events WHERE event_id = ?""",
+            (event["event_id"],),
+        ).fetchone()
+        stored = {
+            "severity": row[0],
+            "priority_score": row[1],
+            "reasons": json.loads(row[2]),
+            "rule_ids": json.loads(row[3]),
+            "decision_version": row[4],
+        }
+        return {"inserted": False, "ingested_at": row[5], "decision": stored}
 
 
 def record_audit(

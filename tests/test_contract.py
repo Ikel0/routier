@@ -86,6 +86,18 @@ class OperationalStoreTests(unittest.TestCase):
             self.assertEqual(report["acknowledged"], 1)
 
 
+    def test_replay_with_changed_content_returns_the_stored_decision(self):
+        healthy = event(event_id="replayed-1")
+        changed = event(event_id="replayed-1", status="disrupted", delay_seconds=990)
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "routier.db"
+            save_event(healthy, assess(validate_event(healthy)), "evt-a", "test", path)
+            replay = save_event(changed, assess(validate_event(changed)), "evt-b", "test", path)
+            self.assertFalse(replay["inserted"])
+            self.assertEqual(replay["decision"]["severity"], assess(validate_event(healthy))["severity"])
+            self.assertNotEqual(replay["decision"]["severity"], assess(validate_event(changed))["severity"])
+
+
 class SourceSnapshotTests(unittest.TestCase):
     def test_counts_gtfs_entities_without_a_protobuf_dependency(self):
         payload = b"\x0a\x02v1\x12\x03one\x12\x03two"

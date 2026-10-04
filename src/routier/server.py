@@ -181,7 +181,7 @@ def _ingest(event: dict, trace_id: str, origin: str) -> dict:
         "trace_id": trace_id,
         "status": status,
         "ingested_at": persisted["ingested_at"],
-        "decision": verdict,
+        "decision": persisted["decision"],
     }
 
 
