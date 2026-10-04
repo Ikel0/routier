@@ -1,6 +1,12 @@
 # Routier
 
-Routier est un **control plane de supervision événementielle** pour un contexte transport. Le projet ne cherche pas à imiter un tableau de bord de mobilité : il montre comment un signal arrive, est validé, rejoué sans créer de doublon, qualifié par des règles explicites, puis pris en charge avec une trace exploitable.
+Routier suit un événement transport du message à l'alerte : la télémétrie est validée contre un contrat versionné, une relecture Kafka est absorbée sans créer de doublon, des règles explicites fixent la priorité, puis un opérateur prend l'alerte en charge. Chaque étape laisse une trace consultable dans l'audit.
+
+Démo : https://routier-ikel.onrender.com (instance gratuite Render, le premier chargement peut prendre une minute).
+
+![Poste opérateur de Routier après chargement du scénario](docs/demo.png)
+
+La capture montre le poste opérateur après chargement du scénario synthétique : quatre événements acceptés, deux alertes ouvertes (une critique sur la ligne B7, une en surveillance sur la ligne M2) et le journal d'ingestion avec l'identifiant de trace de chaque message.
 
 Les télémétries véhicule incluses sont synthétiques. Elles sont là pour rendre le système testable de bout en bout. Une synchronisation du feed public SNCF GTFS-RT Service Alerts est disponible séparément pour démontrer la provenance externe, sans jamais la présenter comme une position véhicule ou un retard réel.
 
@@ -36,7 +42,7 @@ API idempotente ──► SQLite events + ingestion_audit + acknowledgements
 feed SNCF GTFS-RT ──► adaptateur de provenance ──► feed_snapshots
 ```
 
-Le worker est **at least once**. C'est volontaire : un arrêt entre la consommation Kafka et l'API peut provoquer une relecture, et le sink la transforme en réponse `duplicate` grâce à l'unicité de l'`event_id`. Ce n'est donc pas une promesse abstraite d'exactly once.
+Le worker est at least once. C'est volontaire : un arrêt entre la consommation Kafka et l'API peut provoquer une relecture, et le sink la transforme en réponse `duplicate` grâce à l'unicité de l'`event_id`. Ce n'est donc pas une promesse abstraite d'exactly once.
 
 ## Démarrage local
 
