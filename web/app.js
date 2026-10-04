@@ -57,8 +57,8 @@ function renderSources(payload) {
 
 async function json(url, options) {
   const response = await fetch(url, options);
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error || 'Une erreur est survenue');
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || `Le serveur a répondu ${response.status}.`);
   return body;
 }
 
@@ -74,57 +74,61 @@ async function checkReadiness() {
   const state = document.querySelector('.system-state');
   try {
     const ready = await json('/ready');
-    document.querySelector('#readiness').textContent = `${ready.status} · ${ready.contract}`;
+    document.querySelector('#readiness').textContent = ready.status === 'ready' ? 'Système prêt' : ready.status;
     state.classList.add('ready');
   } catch (error) {
-    document.querySelector('#readiness').textContent = 'système indisponible';
+    document.querySelector('#readiness').textContent = 'Système indisponible';
+    state.classList.add('down');
   }
 }
 
-document.querySelector('#demo').addEventListener('click', async event => {
-  const button = event.currentTarget;
+function showStatus(element, message, kind) {
+  element.textContent = message;
+  element.className = `action-status ${kind}`;
+}
+
+// Le libellé du bouton ne change jamais : le résultat ou l'erreur s'affiche
+// dans la zone role="status" sous les boutons, lue par les lecteurs d'écran.
+async function runAction(button, statusElement, pendingMessage, action) {
   button.disabled = true;
-  button.textContent = 'Injection en cours…';
+  showStatus(statusElement, pendingMessage, '');
   try {
+    showStatus(statusElement, await action(), 'ok');
+    await refresh();
+  } catch (error) {
+    showStatus(statusElement, error.message, 'error');
+  } finally {
+    button.disabled = false;
+  }
+}
+
+const actionStatus = document.querySelector('#action-status');
+
+document.querySelector('#demo').addEventListener('click', event => runAction(
+  event.currentTarget, actionStatus, 'Injection du scénario en cours…', async () => {
     const result = await json('/api/demo', {method: 'POST'});
-    button.textContent = result.inserted ? `${result.inserted} événements intégrés` : 'Scénario déjà intégré';
-    await refresh();
-  } catch (error) {
-    button.textContent = error.message;
-  } finally {
-    window.setTimeout(() => { button.disabled = false; button.textContent = 'Charger le scénario'; }, 2200);
-  }
-});
+    const parts = [`${number.format(result.inserted)} événement${result.inserted > 1 ? 's' : ''} intégré${result.inserted > 1 ? 's' : ''}`];
+    if (result.duplicates) parts.push(`${number.format(result.duplicates)} relecture${result.duplicates > 1 ? 's' : ''} absorbée${result.duplicates > 1 ? 's' : ''} comme doublon${result.duplicates > 1 ? 's' : ''}`);
+    return `${parts.join(', ')}.`;
+  }));
 
-document.querySelector('#sync-sncf').addEventListener('click', async event => {
-  const button = event.currentTarget;
-  button.disabled = true;
-  button.textContent = 'Synchronisation…';
-  try {
-    const result = await json('/api/sources/sncf/sync', {method: 'POST'});
-    button.textContent = `${result.entity_count} entités capturées`;
-    await refresh();
-  } catch (error) {
-    button.textContent = error.message;
-  } finally {
-    window.setTimeout(() => { button.disabled = false; button.textContent = 'Capturer le feed SNCF'; }, 2600);
-  }
-});
+document.querySelector('#sync-sncf').addEventListener('click', event => runAction(
+  event.currentTarget, actionStatus, 'Synchronisation du feed SNCF…', async () => {
+    const result = await json('/api/sources/sncf/sync', {method: 'POST'})
+      .catch(() => { throw new Error('Le feed SNCF n\'a pas répondu. Réessaie dans quelques instants.'); });
+    return `${number.format(result.entity_count)} entités capturées depuis le feed SNCF.`;
+  }));
 
-document.querySelector('#alert-list').addEventListener('click', async event => {
+document.querySelector('#alert-list').addEventListener('click', event => {
   const button = event.target.closest('.ack');
   if (!button) return;
-  button.disabled = true;
-  button.textContent = 'En cours…';
-  try {
+  runAction(button, document.querySelector('#queue-status'), 'Prise en charge en cours…', async () => {
     await json(`/api/alerts/${encodeURIComponent(button.dataset.eventId)}/acknowledge`, {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({operator: 'ops-sandbox', note: 'Accusé depuis le poste de démonstration'}),
     });
-    await refresh();
-  } catch (error) {
-    button.textContent = error.message;
-  }
+    return 'Alerte prise en charge, accusé inscrit dans l\'audit.';
+  });
 });
 
 refresh().catch(() => { document.querySelector('#readiness').textContent = 'Erreur de chargement des données'; });
