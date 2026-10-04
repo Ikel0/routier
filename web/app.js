@@ -19,13 +19,14 @@ function outcomeLabel(outcome) {
 function renderOverview(data) {
   document.querySelector('#metric-alerts').textContent = number.format(data.open_alerts);
   document.querySelector('#event-count').textContent = `${number.format(data.total_events)} événement${data.total_events > 1 ? 's' : ''}`;
-  document.querySelector('#updated').textContent = 'maintenant';
+  document.querySelector('#updated').textContent = timeFormat.format(new Date());
   const open = data.events.filter(event => event.severity !== 'none' && !event.acknowledged_at);
-  document.querySelector('#queue-count').textContent = `${open.length} active${open.length > 1 ? 's' : ''}`;
+  document.querySelector('#queue-count').textContent = `${open.length} alerte${open.length > 1 ? 's' : ''} active${open.length > 1 ? 's' : ''}`;
   document.querySelector('#alert-list').innerHTML = open.length ? open.map(event => `
-    <article class="alert ${escapeHtml(event.severity)}">
-      <i></i><div><h3>${escapeHtml(event.route_id)} · ${escapeHtml(event.vehicle_id)}</h3><p>${event.reasons.map(escapeHtml).join(' · ')}</p></div>
-      <div class="alert-meta"><time>${atTime(event.recorded_at)}</time><button class="ack" data-event-id="${escapeHtml(event.event_id)}">Prendre en charge</button></div>
+    <article class="alert">
+      <span class="severity ${escapeHtml(event.severity)}">${severityText[event.severity] || escapeHtml(event.severity)}</span>
+      <div><h3>Ligne ${escapeHtml(event.route_id)} · véhicule ${escapeHtml(event.vehicle_id)}</h3><p>${event.reasons.map(escapeHtml).join(' · ')}</p></div>
+      <div class="alert-meta"><time>${atTime(event.recorded_at)}</time><button type="button" class="ack" data-event-id="${escapeHtml(event.event_id)}">Prendre en charge</button></div>
     </article>`).join('') : '<p class="empty">Aucune alerte active. Charge le scénario pour suivre une décision de bout en bout.</p>';
   document.querySelector('#event-list').innerHTML = data.events.length ? data.events.map(event => `
     <tr><td>${escapeHtml(event.vehicle_id)}</td><td>${escapeHtml(event.route_id)}</td><td>${number.format(event.priority_score)}</td><td><code>${event.rule_ids.map(escapeHtml).join(', ') || 'aucune'}</code></td><td><span class="badge ${escapeHtml(event.severity)}">${severityText[event.severity]}</span></td></tr>`).join('') : '<tr><td colspan="5">Le tableau attend son premier événement.</td></tr>';
@@ -45,13 +46,13 @@ function renderMetrics(data) {
 function renderAudit(payload) {
   const rows = payload.items || [];
   document.querySelector('#audit-list').innerHTML = rows.length ? rows.map(item => `
-    <tr><td>${atTime(item.created_at)}</td><td><code>${escapeHtml(item.trace_id)}</code></td><td>${escapeHtml(item.event_id || 'sans event_id')}</td><td>${escapeHtml(item.origin)}</td><td><span class="audit-outcome ${escapeHtml(item.outcome)}">${outcomeLabel(item.outcome)}</span></td><td>${escapeHtml(item.reason || 'contrat validé')}</td></tr>`).join('') : '<tr><td colspan="6">Le journal attend sa première activité.</td></tr>';
+    <tr><td>${atTime(item.created_at)}</td><td><code>${escapeHtml(item.trace_id)}</code></td><td>${item.event_id ? `<code>${escapeHtml(item.event_id)}</code>` : 'sans identifiant'}</td><td>${escapeHtml(item.origin)}</td><td><span class="audit-outcome ${escapeHtml(item.outcome)}">${outcomeLabel(item.outcome)}</span></td><td>${escapeHtml(item.reason || 'contrat validé')}</td></tr>`).join('') : '<tr><td colspan="6">Le journal attend sa première activité.</td></tr>';
 }
 
 function renderSources(payload) {
   const rows = payload.sources || [];
   document.querySelector('#source-list').innerHTML = rows.length ? rows.map(source => `
-    <tr><td><a href="${escapeHtml(source.source_url)}" target="_blank" rel="noopener">${escapeHtml(source.source)} ↗</a></td><td>${number.format(source.entity_count)}</td><td>${number.format(source.byte_size)} octets</td><td><code>${escapeHtml(source.checksum)}</code></td><td>${atTime(source.captured_at)}</td></tr>`).join('') : '<tr><td colspan="5">Aucune photographie externe capturée.</td></tr>';
+    <tr><td><a href="${escapeHtml(source.source_url)}" target="_blank" rel="noopener">${escapeHtml(source.source)}</a></td><td>${number.format(source.entity_count)}</td><td>${number.format(source.byte_size)} octets</td><td><code>${escapeHtml(source.checksum)}</code></td><td>${atTime(source.captured_at)}</td></tr>`).join('') : '<tr><td colspan="5">Aucune photographie externe capturée.</td></tr>';
 }
 
 async function json(url, options) {
@@ -91,7 +92,7 @@ document.querySelector('#demo').addEventListener('click', async event => {
   } catch (error) {
     button.textContent = error.message;
   } finally {
-    window.setTimeout(() => { button.disabled = false; button.innerHTML = 'Charger le scénario <b>↗</b>'; }, 2200);
+    window.setTimeout(() => { button.disabled = false; button.textContent = 'Charger le scénario'; }, 2200);
   }
 });
 
@@ -126,5 +127,5 @@ document.querySelector('#alert-list').addEventListener('click', async event => {
   }
 });
 
-refresh().catch(() => { document.querySelector('#readiness').textContent = 'erreur de chargement'; });
+refresh().catch(() => { document.querySelector('#readiness').textContent = 'Erreur de chargement des données'; });
 checkReadiness();
