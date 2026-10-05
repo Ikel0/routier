@@ -1,15 +1,21 @@
-const number = new Intl.NumberFormat('fr-FR');
+const {escapeHtml, plural, describeResult, summarizeRun, severityText, number} = window.RoutierFormat;
 const clock = new Intl.DateTimeFormat('fr-FR', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
-const severityText = {none: 'nominal', watch: 'surveillance', critical: 'critique'};
 const deliveryText = {at_least_once_with_idempotent_sink: 'at least once avec sink idempotent'};
 
-function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>'"]/g, character => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[character]));
-}
-
-function plural(count, singular, pluralForm = `${singular}s`) {
-  return `${number.format(count)} ${count > 1 ? pluralForm : singular}`;
-}
+// Chaque onglet a sa propre base côté serveur : ce qu'un visiteur envoie
+// n'apparaît jamais chez un autre.
+const session = (() => {
+  const fresh = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 14)}`);
+  try {
+    const stored = sessionStorage.getItem('routier-session');
+    if (stored) return stored;
+    const created = fresh();
+    sessionStorage.setItem('routier-session', created);
+    return created;
+  } catch (error) {
+    return fresh();
+  }
+})();
 
 function atTime(value, fallback = '—') {
   if (!value) return fallback;
@@ -25,8 +31,12 @@ function isOpen(event) {
   return event.severity !== 'none' && !event.acknowledged_at;
 }
 
+function severityLabel(severity) {
+  return escapeHtml(severityText[severity] || severity);
+}
+
 function outcomeLabel(outcome) {
-  return {accepted: 'accepté', duplicate: 'doublon', rejected: 'rejeté', acknowledged: 'pris en charge'}[outcome] || outcome;
+  return escapeHtml({accepted: 'accepté', duplicate: 'doublon', rejected: 'rejeté', acknowledged: 'pris en charge'}[outcome] || outcome);
 }
 
 function renderTally(overview, metrics) {
@@ -50,7 +60,7 @@ function renderQueue(overview) {
       <td class="time">${atTime(event.recorded_at)}</td>
       <td>${lineChip(event.route_id)}</td>
       <td class="nowrap">${escapeHtml(event.vehicle_id)}</td>
-      <td class="sev-${escapeHtml(event.severity)}">${severityText[event.severity] || escapeHtml(event.severity)}</td>
+      <td class="sev-${escapeHtml(event.severity)}">${severityLabel(event.severity)}</td>
       <td>${event.reasons.map(escapeHtml).join(' ; ')}</td>
       <td class="action"><button type="button" class="ack" data-event-id="${escapeHtml(event.event_id)}" aria-label="Prendre en charge l'alerte ligne ${escapeHtml(event.route_id)}, véhicule ${escapeHtml(event.vehicle_id)}">Prendre en charge</button></td>
     </tr>`).join('');
@@ -64,9 +74,9 @@ function renderEvents(overview) {
       <td class="nowrap">${escapeHtml(event.vehicle_id)}</td>
       <td class="num">${number.format(event.priority_score)}</td>
       <td><code>${event.rule_ids.map(escapeHtml).join(', ') || 'aucune'}</code></td>
-      <td class="${isOpen(event) ? `sev-${escapeHtml(event.severity)}` : ''}">${severityText[event.severity] || escapeHtml(event.severity)}</td>
+      <td class="${isOpen(event) ? `sev-${escapeHtml(event.severity)}` : ''}">${severityLabel(event.severity)}</td>
       <td class="muted">${event.severity === 'none' ? 'sans objet' : event.acknowledged_at ? `${atTime(event.acknowledged_at)} par ${escapeHtml(event.acknowledged_by)}` : 'en attente'}</td>
-    </tr>`).join('') : '<tr><td colspan="6" class="empty">Aucun événement intégré. Le scénario en produit quatre.</td></tr>';
+    </tr>`).join('') : '<tr><td colspan="6" class="empty">Aucun événement intégré.</td></tr>';
 }
 
 // Le journal d'audit ne porte pas la ligne : on la retrouve dans les événements
@@ -80,7 +90,7 @@ function renderAudit(audit, overview) {
     let stateClass = '';
     if (item.outcome === 'accepted' && event && event.severity !== 'none') {
       const open = isOpen(event);
-      motive = `alerte ${severityText[event.severity]} ${open ? 'ouverte' : 'prise en charge'} : ${event.reasons.map(escapeHtml).join(' ; ')}`;
+      motive = `alerte ${severityLabel(event.severity)} ${open ? 'ouverte' : 'prise en charge'} : ${event.reasons.map(escapeHtml).join(' ; ')}`;
       if (open) stateClass = 'state-open';
     }
     if (item.outcome === 'duplicate' && !item.reason) motive = 'relecture absorbée, décision déjà enregistrée';
@@ -95,14 +105,15 @@ function renderAudit(audit, overview) {
       <td class="muted nowrap">${escapeHtml(item.origin)}</td>
       <td><code class="muted">${escapeHtml(item.trace_id)}</code></td>
     </tr>`;
-  }).join('') : '<tr><td colspan="7" class="empty">Rien d\'inscrit pour l\'instant. Charge le scénario pour ouvrir la main courante.</td></tr>';
+  }).join('') : '<tr><td colspan="7" class="empty">Rien d\'inscrit pour l\'instant. Lance le flux pour remplir la main courante.</td></tr>';
 }
 
 function renderTerms(metrics) {
   document.querySelector('#delivery-semantics').textContent = deliveryText[metrics.delivery_semantics] || metrics.delivery_semantics.replaceAll('_', ' ');
   document.querySelector('#contract-name').textContent = metrics.contract;
   document.querySelector('#dead-letter-topic').textContent = metrics.dead_letter_topic;
-  if (metrics.latest_source) document.querySelector('#source-status').textContent = `dernière capture ${metrics.latest_source.source}, ${atTime(metrics.latest_source.captured_at)}`;
+  document.querySelector('#source-status').textContent = metrics.latest_source
+    ? `dernière capture ${metrics.latest_source.source}, ${atTime(metrics.latest_source.captured_at)}` : 'aucune capture';
 }
 
 function renderSources(payload) {
@@ -117,10 +128,21 @@ function renderSources(payload) {
     </tr>`).join('') : '<tr><td colspan="5" class="empty">Aucune capture du feed pour l\'instant.</td></tr>';
 }
 
-async function json(url, options) {
-  const response = await fetch(url, options);
+class HttpError extends Error {
+  constructor(message, status, body) {
+    super(message);
+    this.status = status;
+    this.body = body;
+  }
+}
+
+// allowRejection : pour /api/events, un 422 est un résultat (rejet inscrit au
+// journal), pas une panne.
+async function json(url, {allowRejection = false, ...options} = {}) {
+  const headers = {'X-Routier-Session': session, ...(options.headers || {})};
+  const response = await fetch(url, {...options, headers});
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || `Le serveur a répondu ${response.status}.`);
+  if (!response.ok && !(allowRejection && response.status === 422)) throw new HttpError(body.error || `Le serveur a répondu ${response.status}.`, response.status, body);
   return body;
 }
 
@@ -135,26 +157,27 @@ async function refresh() {
   document.querySelector('#updated').textContent = clock.format(new Date());
 }
 
-async function checkReadiness() {
-  const readiness = document.querySelector('#readiness');
-  try {
-    const ready = await json('/ready');
-    readiness.textContent = ready.status === 'ready' ? 'Système prêt.' : `Système : ${ready.status}.`;
-  } catch (error) {
-    readiness.textContent = 'Système injoignable.';
-  }
+function markNewestRow() {
+  const row = document.querySelector('#audit-list tr');
+  if (!row) return;
+  row.classList.add('fresh');
+  setTimeout(() => row.classList.remove('fresh'), 1400);
 }
 
-function showStatus(element, message, kind) {
+function showStatus(element, message, kind = '') {
   element.textContent = message;
   element.className = `status ${kind}`;
 }
 
-// Le libellé du bouton ne change jamais : le résultat ou l'erreur s'affiche
-// dans la zone role="status" voisine, lue par les lecteurs d'écran.
+const actionStatus = document.querySelector('#action-status');
+const startButton = document.querySelector('#stream-start');
+const pauseButton = document.querySelector('#stream-pause');
+
+// Le libellé d'un bouton d'action ne change pas : le résultat ou l'erreur
+// s'affiche dans la zone role="status" voisine, lue par les lecteurs d'écran.
 async function runAction(button, statusElement, pendingMessage, action) {
   button.disabled = true;
-  showStatus(statusElement, pendingMessage, '');
+  showStatus(statusElement, pendingMessage);
   try {
     showStatus(statusElement, await action(), 'ok');
     await refresh();
@@ -165,7 +188,98 @@ async function runAction(button, statusElement, pendingMessage, action) {
   }
 }
 
-const actionStatus = document.querySelector('#action-status');
+// Flux : les messages viennent de data/stream_events.jsonl via /api/stream et
+// passent un par un par la vraie route /api/events (contrat, règles, audit).
+const stream = {messages: [], interval: 1600, index: 0, statuses: [], timer: null, running: false, paused: false, run: 0};
+
+function setStreamControls() {
+  startButton.disabled = stream.running;
+  pauseButton.disabled = !stream.running;
+  pauseButton.textContent = stream.paused ? 'Reprendre' : 'Pause';
+  pauseButton.setAttribute('aria-pressed', String(stream.paused));
+}
+
+function stopStream() {
+  stream.run += 1;
+  clearTimeout(stream.timer);
+  stream.timer = null;
+  stream.running = false;
+  stream.paused = false;
+  setStreamControls();
+}
+
+async function sendNext() {
+  stream.timer = null;
+  if (!stream.running || stream.paused) return;
+  const run = stream.run;
+  const message = stream.messages[stream.index];
+  try {
+    const payload = await json('/api/events', {
+      allowRejection: true,
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-Routier-Origin': 'flux-demo'},
+      body: JSON.stringify(message),
+    });
+    if (run !== stream.run) return;
+    stream.statuses.push(payload.status);
+    stream.index += 1;
+    await refresh();
+    if (run !== stream.run) return;
+    markNewestRow();
+    const done = stream.index >= stream.messages.length;
+    showStatus(actionStatus, `Message ${stream.index} sur ${stream.messages.length}. ${describeResult(message, payload)}${done ? ` ${summarizeRun(stream.statuses)}` : ''}`);
+    if (done) { stopStream(); return; }
+  } catch (error) {
+    if (run !== stream.run) return;
+    showStatus(actionStatus, `Flux interrompu : ${error.message}`, 'error');
+    stopStream();
+    return;
+  }
+  if (stream.running && !stream.paused) stream.timer = setTimeout(sendNext, stream.interval);
+}
+
+startButton.addEventListener('click', async () => {
+  stream.running = true;
+  stream.paused = false;
+  setStreamControls();
+  showStatus(actionStatus, 'Lecture du scénario de flux…');
+  try {
+    const payload = await json('/api/stream');
+    stream.messages = payload.messages || [];
+    stream.interval = Math.max(1500, payload.interval_ms || 1600);
+  } catch (error) {
+    showStatus(actionStatus, `Le scénario de flux n'a pas pu être lu : ${error.message}`, 'error');
+    stopStream();
+    return;
+  }
+  if (!stream.running) return;
+  stream.index = 0;
+  stream.statuses = [];
+  sendNext();
+});
+
+pauseButton.addEventListener('click', () => {
+  if (!stream.running) return;
+  stream.paused = !stream.paused;
+  setStreamControls();
+  if (stream.paused) {
+    clearTimeout(stream.timer);
+    stream.timer = null;
+    showStatus(actionStatus, `Flux en pause après ${plural(stream.index, 'message')} sur ${stream.messages.length}.`);
+  } else {
+    showStatus(actionStatus, 'Reprise du flux…');
+    sendNext();
+  }
+});
+
+document.querySelector('#reset').addEventListener('click', event => {
+  stopStream();
+  showStatus(document.querySelector('#queue-status'), '');
+  runAction(event.currentTarget, actionStatus, 'Remise à l\'état de départ…', async () => {
+    await json('/api/reset', {method: 'POST'});
+    return 'Main courante revenue au scénario de référence.';
+  });
+});
 
 document.querySelector('#demo').addEventListener('click', event => runAction(
   event.currentTarget, actionStatus, 'Injection du scénario…', async () => {
@@ -178,7 +292,7 @@ document.querySelector('#demo').addEventListener('click', event => runAction(
 document.querySelector('#sync-sncf').addEventListener('click', event => runAction(
   event.currentTarget, actionStatus, 'Capture du feed SNCF…', async () => {
     const result = await json('/api/sources/sncf/sync', {method: 'POST'})
-      .catch(() => { throw new Error('Le feed SNCF n\'a pas répondu. Réessaie dans quelques instants.'); });
+      .catch(error => { throw new Error(error.status === 429 ? error.message : 'Le feed SNCF n\'a pas répondu. Réessaie dans quelques instants.'); });
     return `${plural(result.entity_count, 'entité capturée', 'entités capturées')} depuis le feed SNCF.`;
   }));
 
@@ -194,9 +308,42 @@ document.querySelector('#alert-list').addEventListener('click', event => {
   });
 });
 
-refresh().catch(error => {
-  document.querySelector('#tally').textContent = `Les compteurs n'ont pas pu être lus : ${error.message}`;
-  document.querySelector('#audit-list').innerHTML = `<tr><td colspan="7" class="empty">Le journal n'a pas pu être lu. Recharge la page dans quelques instants.</td></tr>`;
-  document.querySelector('#event-list').innerHTML = '<tr><td colspan="6" class="empty">Les événements n\'ont pas pu être lus.</td></tr>';
-});
-checkReadiness();
+async function checkReadiness() {
+  const readiness = document.querySelector('#readiness');
+  try {
+    const ready = await json('/ready');
+    readiness.textContent = ready.status === 'ready' ? 'Système prêt.' : `Système : ${ready.status}.`;
+  } catch (error) {
+    readiness.textContent = 'Système injoignable.';
+  }
+}
+
+// L'instance gratuite Render s'endort : au réveil, l'API peut répondre 502
+// ou très lentement. On le dit plutôt que de laisser un chargement muet.
+async function firstLoad() {
+  const tally = document.querySelector('#tally');
+  const slow = setTimeout(() => { tally.textContent = 'Le service démarre, environ 40 s.'; }, 3000);
+  const started = Date.now();
+  while (true) {
+    try {
+      await refresh();
+      clearTimeout(slow);
+      checkReadiness();
+      return;
+    } catch (error) {
+      if (Date.now() - started > 120000) {
+        clearTimeout(slow);
+        tally.textContent = 'Le service ne répond pas. Recharge la page dans une minute.';
+        document.querySelector('#audit-list').innerHTML = '<tr><td colspan="7" class="empty">Le journal n\'a pas pu être lu.</td></tr>';
+        document.querySelector('#event-list').innerHTML = '<tr><td colspan="6" class="empty">Les événements n\'ont pas pu être lus.</td></tr>';
+        document.querySelector('#readiness').textContent = 'Système injoignable.';
+        return;
+      }
+      tally.textContent = 'Le service démarre, environ 40 s.';
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  }
+}
+
+setStreamControls();
+firstLoad();

@@ -19,13 +19,18 @@
       <p>Valide les télémétries transport contre un contrat, absorbe les relectures, ouvre des alertes à prendre en charge et inscrit chaque ingestion à la main courante.</p>
     </div>
     <div class="controls">
-      <div class="actions">
-        <button id="demo" type="button">Charger le scénario</button>
-        <button id="sync-sncf" type="button" class="secondary">Capturer le feed SNCF</button>
+      <div class="actions" role="group" aria-label="Flux de télémétries">
+        <button id="stream-start" type="button">Lancer le flux</button>
+        <button id="stream-pause" type="button" class="secondary" aria-pressed="false" disabled>Pause</button>
+        <button id="reset" type="button" class="secondary">Réinitialiser</button>
+      </div>
+      <div class="actions minor">
+        <button id="demo" type="button" class="quiet">Charger le scénario</button>
+        <button id="sync-sncf" type="button" class="quiet">Capturer le feed SNCF</button>
       </div>
       <p id="action-status" class="status" role="status" aria-live="polite"></p>
     </div>
-    <p class="terms">Positions véhicule simulées ; le feed SNCF GTFS-RT n'est capturé que pour ses métadonnées de provenance. Livraison <span id="delivery-semantics">at least once avec sink idempotent</span> : le worker ne commite qu'après écriture ou rejet confirmé. Contrat actif <code id="contract-name">vehicle.telemetry.v1.0</code>, topic de rejet <code id="dead-letter-topic">vehicle.telemetry.invalid.v1</code>. <span id="readiness">Vérification du système…</span></p>
+    <p class="terms">Positions véhicule simulées ; « Lancer le flux » envoie à l'API, une toutes les 1,6 s, les télémétries d'un second scénario, dont une relecture et un message hors contrat ; ce que tu envoies reste dans ta session, effacée après une heure. Le feed SNCF GTFS-RT n'est capturé que pour ses métadonnées de provenance. Livraison <span id="delivery-semantics">at least once avec sink idempotent</span> : le worker ne commite qu'après écriture ou rejet confirmé. Contrat actif <code id="contract-name">vehicle.telemetry.v1.0</code>, topic de rejet <code id="dead-letter-topic">vehicle.telemetry.invalid.v1</code>. <span id="readiness">Vérification du système…</span></p>
   </header>
 
   <main>
@@ -80,6 +85,7 @@
     <span>Télémétries synthétiques ; métadonnées du feed public SNCF GTFS-RT Service Alerts.</span>
   </footer>
   <noscript><p class="noscript">La main courante a besoin de JavaScript pour lire le journal.</p></noscript>
+  <script src="/format.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>
