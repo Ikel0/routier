@@ -114,7 +114,7 @@ function renderTerms(metrics) {
   document.querySelector('#contract-name').textContent = metrics.contract;
   document.querySelector('#dead-letter-topic').textContent = metrics.dead_letter_topic;
   document.querySelector('#source-status').textContent = metrics.latest_source
-    ? `dernière capture ${metrics.latest_source.source}, ${atTime(metrics.latest_source.captured_at)}` : 'aucune capture';
+    ? `dernière capture ${escapeHtml(metrics.latest_source.source)}, ${atTime(metrics.latest_source.captured_at)}` : 'aucune capture';
 }
 
 function renderSources(payload) {
