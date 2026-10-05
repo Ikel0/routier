@@ -4,9 +4,9 @@ Routier suit un événement transport du message à l'alerte : la télémétrie 
 
 Démo : https://routier-ikel.onrender.com (instance gratuite Render, le premier chargement peut prendre une minute).
 
-![Poste opérateur de Routier après chargement du scénario](docs/demo.png)
+![Main courante de Routier après chargement du scénario](docs/demo.png)
 
-La capture montre le poste opérateur après chargement du scénario synthétique : quatre événements acceptés, deux alertes ouvertes (une critique sur la ligne B7, une en surveillance sur la ligne M2) et le journal d'ingestion avec l'identifiant de trace de chaque message.
+La capture montre la main courante après deux chargements du scénario synthétique : quatre événements acceptés, quatre relectures absorbées comme doublons, deux alertes à prendre en charge (une critique sur la ligne B7, une en surveillance sur la ligne M2), puis le journal horodaté, le plus récent en haut, avec l'identifiant de trace de chaque message.
 
 Les télémétries véhicule incluses sont synthétiques. Elles sont là pour rendre le système testable de bout en bout. Une synchronisation du feed public SNCF GTFS-RT Service Alerts est disponible séparément pour démontrer la provenance externe, sans jamais la présenter comme une position véhicule ou un retard réel.
 
