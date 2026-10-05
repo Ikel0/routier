@@ -16,7 +16,7 @@
     const id = message && typeof message.event_id === 'string' ? message.event_id : 'message sans identifiant';
     const line = message && typeof message.route_id === 'string' ? `, ligne ${message.route_id}` : '';
     if (!payload || payload.status === 'rejected') {
-      return `${id}${line} : rejeté, ${payload && payload.error ? payload.error : 'motif inconnu'}.`;
+      return `${id}${line} : rejeté, ${payload && payload.error ? `validateur : ${payload.error}` : 'motif inconnu'}.`;
     }
     if (payload.status === 'duplicate') return `${id}${line} : relecture absorbée, aucun doublon écrit.`;
     const decision = payload.decision || {};

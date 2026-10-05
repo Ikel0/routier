@@ -132,6 +132,26 @@ class StreamTests(ServerCase):
         self.assertEqual(codes, [200, 200, 429])
 
 
+class ClientIpTests(unittest.TestCase):
+    def test_true_client_ip_wins(self):
+        headers = {"True-Client-IP": "203.0.113.7", "X-Forwarded-For": "198.51.100.1, 10.0.0.2"}
+        self.assertEqual(server.client_ip(headers, "10.0.0.9"), "203.0.113.7")
+
+    def test_rightmost_forwarded_value_is_used(self):
+        # La valeur de gauche est forgeable par le client : elle ne doit pas compter.
+        headers = {"X-Forwarded-For": "1.2.3.4, 198.51.100.1, 10.0.0.2"}
+        self.assertEqual(server.client_ip(headers, "10.0.0.9"), "10.0.0.2")
+
+    def test_connection_address_without_headers(self):
+        self.assertEqual(server.client_ip({}, "10.0.0.9"), "10.0.0.9")
+        self.assertEqual(server.client_ip({"X-Forwarded-For": " , "}, "10.0.0.9"), "10.0.0.9")
+
+    def test_forged_left_values_share_one_counter(self):
+        server_limit = RateLimiter(2)
+        keys = [server.client_ip({"X-Forwarded-For": f"9.9.9.{n}, 198.51.100.1"}, "10.0.0.9") for n in range(3)]
+        self.assertEqual([server_limit.allow(key) for key in keys], [True, True, False])
+
+
 class RateLimiterTests(unittest.TestCase):
     def test_window_slides(self):
         clock = [0.0]

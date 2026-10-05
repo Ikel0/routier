@@ -91,6 +91,21 @@ def submit(raw_event: object, trace_id: str, origin: str, path: Path | None = No
         return HTTPStatus.UNPROCESSABLE_ENTITY, {"status": "rejected", "trace_id": trace_id, "event_id": event_id, "error": str(exc)}
 
 
+def client_ip(headers, peer: str) -> str:
+    """Adresse servant au rate limit.
+
+    True-Client-IP quand le proxy le pose. Sinon la valeur la plus à droite de
+    X-Forwarded-For : c'est celle qu'a ajoutée le dernier proxy, les valeurs
+    plus à gauche viennent du client et peuvent être forgées pour changer de
+    compteur à chaque requête. Sinon l'adresse de la connexion.
+    """
+    true_client = (headers.get("True-Client-IP") or "").strip()
+    if true_client:
+        return true_client
+    hops = [hop.strip() for hop in (headers.get("X-Forwarded-For") or "").split(",") if hop.strip()]
+    return hops[-1] if hops else peer
+
+
 def seed_reference(path: Path) -> None:
     for message in reference_messages():
         submit(message, _trace_id(message, None), "demo-loader", path)
@@ -130,12 +145,7 @@ class Handler(SimpleHTTPRequestHandler):
         return payload
 
     def _client_ip(self) -> str:
-        # Adresse du visiteur posée par le proxy (True-Client-IP), sinon la première de X-Forwarded-For.
-        true_client = self.headers.get("True-Client-IP", "").strip()
-        if true_client:
-            return true_client
-        forwarded = self.headers.get("X-Forwarded-For", "")
-        return forwarded.split(",")[0].strip() or self.client_address[0]
+        return client_ip(self.headers, self.client_address[0])
 
     def _session(self) -> str | None:
         return self.headers.get(SESSION_HEADER)

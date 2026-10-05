@@ -35,7 +35,7 @@ class FormatTests(unittest.TestCase):
         self.assertEqual(texts["accepted_alert"], "flux-203, ligne B7 : accepté, alerte critique ouverte.")
         self.assertEqual(texts["accepted_quiet"], "flux-203, ligne B7 : accepté, rien à signaler.")
         self.assertEqual(texts["duplicate"], "flux-203, ligne B7 : relecture absorbée, aucun doublon écrit.")
-        self.assertIn("rejeté, delay_seconds", texts["rejected"])
+        self.assertIn("rejeté, validateur : delay_seconds", texts["rejected"])
 
     def test_run_summary_counts_real_statuses(self):
         summary = run_node("f.summarizeRun(['accepted', 'accepted', 'duplicate', 'rejected'])")

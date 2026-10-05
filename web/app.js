@@ -86,7 +86,8 @@ function renderAudit(audit, overview) {
   const rows = audit.items || [];
   document.querySelector('#audit-list').innerHTML = rows.length ? rows.map(item => {
     const event = events.get(item.event_id);
-    let motive = escapeHtml(item.reason || 'contrat validé');
+    // Les motifs de rejet sont le texte brut du validateur de contrat.
+    let motive = item.outcome === 'rejected' && item.reason ? `validateur : ${escapeHtml(item.reason)}` : escapeHtml(item.reason || 'contrat validé');
     let stateClass = '';
     if (item.outcome === 'accepted' && event && event.severity !== 'none') {
       const open = isOpen(event);
