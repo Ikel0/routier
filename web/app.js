@@ -60,7 +60,7 @@ function renderQueue(overview) {
       <td class="time">${atTime(event.recorded_at)}</td>
       <td>${lineChip(event.route_id)}</td>
       <td class="nowrap">${escapeHtml(event.vehicle_id)}</td>
-      <td class="sev-${escapeHtml(event.severity)}">${severityLabel(event.severity)}</td>
+      <td><span class="label label-open label-${escapeHtml(event.severity)}">${severityLabel(event.severity)}</span></td>
       <td>${event.reasons.map(escapeHtml).join(' ; ')}</td>
       <td class="action"><button type="button" class="ack" data-event-id="${escapeHtml(event.event_id)}" aria-label="Prendre en charge l'alerte ligne ${escapeHtml(event.route_id)}, véhicule ${escapeHtml(event.vehicle_id)}">Prendre en charge</button></td>
     </tr>`).join('');
@@ -74,7 +74,7 @@ function renderEvents(overview) {
       <td class="nowrap">${escapeHtml(event.vehicle_id)}</td>
       <td class="num">${number.format(event.priority_score)}</td>
       <td><code>${event.rule_ids.map(escapeHtml).join(', ') || 'aucune'}</code></td>
-      <td class="${isOpen(event) ? `sev-${escapeHtml(event.severity)}` : ''}">${severityLabel(event.severity)}</td>
+      <td><span class="label${isOpen(event) ? ` label-open label-${escapeHtml(event.severity)}` : ''}">${severityLabel(event.severity)}</span></td>
       <td class="muted">${event.severity === 'none' ? 'sans objet' : event.acknowledged_at ? `${atTime(event.acknowledged_at)} par ${escapeHtml(event.acknowledged_by)}` : 'en attente'}</td>
     </tr>`).join('') : '<tr><td colspan="6" class="empty">Aucun événement intégré.</td></tr>';
 }
@@ -100,7 +100,7 @@ function renderAudit(audit, overview) {
       <td class="time">${atTime(item.created_at)}</td>
       <td>${lineChip(event && event.route_id)}</td>
       <td>${item.event_id ? `<code>${escapeHtml(item.event_id)}</code>` : '<span class="muted">sans identifiant</span>'}</td>
-      <td class="nowrap">${outcomeLabel(item.outcome)}</td>
+      <td class="nowrap"><span class="label label-${escapeHtml(item.outcome)}">${outcomeLabel(item.outcome)}</span></td>
       <td class="${stateClass}">${motive}</td>
       <td class="muted nowrap">${escapeHtml(item.origin)}</td>
       <td><code class="muted">${escapeHtml(item.trace_id)}</code></td>
