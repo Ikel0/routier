@@ -30,7 +30,7 @@
       </div>
       <p id="action-status" class="status" role="status" aria-live="polite"></p>
     </div>
-    <p class="terms">Positions véhicule simulées ; « Lancer le flux » envoie à l'API, une toutes les 1,6 s, les télémétries d'un second scénario, dont une relecture et un message hors contrat ; ce que tu envoies reste dans ta session, effacée après une heure. Le feed SNCF GTFS-RT n'est capturé que pour ses métadonnées de provenance. Livraison <span id="delivery-semantics">at least once avec sink idempotent</span> : le worker ne commite qu'après écriture ou rejet confirmé. Contrat actif <code id="contract-name">vehicle.telemetry.v1.0</code>, topic de rejet <code id="dead-letter-topic">vehicle.telemetry.invalid.v1</code>. <span id="readiness">Vérification du système…</span></p>
+    <p class="terms">Positions véhicule simulées. « Lancer le flux » envoie à l'API, une toutes les 1,6 s, les huit télémétries d'un second scénario, dont une relecture et un message hors contrat ; ce que vous envoyez reste dans votre session, effacée au bout d'une heure. Le feed SNCF GTFS-RT n'est capturé que pour ses métadonnées de provenance. Livraison <span id="delivery-semantics">at least once avec sink idempotent</span> : le worker ne commite qu'après écriture ou rejet confirmé. Contrat actif <code id="contract-name">vehicle.telemetry.v1.0</code>, topic de rejet <code id="dead-letter-topic">vehicle.telemetry.invalid.v1</code>. <span id="readiness">Vérification du système…</span></p>
   </header>
 
   <main>
