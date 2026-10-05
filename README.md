@@ -44,6 +44,8 @@ feed SNCF GTFS-RT ──► adaptateur de provenance ──► feed_snapshots
 
 Le worker est at least once. C'est volontaire : un arrêt entre la consommation Kafka et l'API peut provoquer une relecture, et le sink la transforme en réponse `duplicate` grâce à l'unicité de l'`event_id`. Ce n'est donc pas une promesse abstraite d'exactly once.
 
+Le chemin de rejet suit la même règle. Si le worker s'arrête entre l'accusé du topic `vehicle.telemetry.invalid.v1` et le commit, le message rejeté y est publié une seconde fois. Chaque rejet porte donc l'`event_id` en clé Kafka (ou une empreinte SHA-256 du message quand l'identifiant manque) et un `rejection_id` stable : celui qui lit ce topic écarte la copie.
+
 ## Démarrage local
 
 Prérequis : Python 3.11+.

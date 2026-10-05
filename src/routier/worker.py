@@ -9,7 +9,7 @@ from urllib.request import Request, urlopen
 
 from kafka import KafkaConsumer, KafkaProducer
 
-from .pipeline import process_message, trace_id_for
+from .pipeline import process_message, rejection_record, trace_id_for
 
 
 def _post_to_api(event: dict) -> None:
@@ -44,11 +44,14 @@ def main() -> None:
             )
             producer = KafkaProducer(
                 bootstrap_servers=bootstrap,
+                key_serializer=lambda key: key.encode("utf-8"),
                 value_serializer=lambda value: json.dumps(value).encode("utf-8"),
             )
 
-            def reject(event: dict[str, Any], reason: str) -> None:
-                producer.send(invalid_topic, {"event": event, "reason": reason, "worker": "routier-control"}).get(timeout=10)
+            def reject(event: dict, reason: str) -> None:
+                # Keyed by event_id: a replay after a crash republishes the same key and rejection_id.
+                key, payload = rejection_record(event, reason)
+                producer.send(invalid_topic, key=key, value=payload).get(timeout=10)
 
             for message in consumer:
                 try:

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from routier.contract import ContractError, validate_event
 from routier.decision import assess
-from routier.pipeline import process_message, trace_id_for
+from routier.pipeline import process_message, rejection_record, trace_id_for
 from routier.sources import count_gtfs_entities, fetch_sncf_service_alerts
 from routier.store import acknowledge_alert, metrics, overview, record_audit, save_event, save_snapshot, sources
 
@@ -19,6 +19,26 @@ def event(**overrides):
     }
     sample.update(overrides)
     return sample
+
+
+class RejectionTests(unittest.TestCase):
+    def test_replayed_rejection_keeps_key_and_id(self):
+        bad = event(occupancy_percent=102)
+        rejected = []
+        for _ in range(2):
+            process_message(bad, lambda _: None, lambda value, reason: rejected.append(rejection_record(value, reason)))
+        self.assertEqual(rejected[0], rejected[1])
+        key, payload = rejected[0]
+        self.assertEqual(key, "one")
+        self.assertEqual(payload["event_key"], "one")
+        self.assertTrue(payload["rejection_id"].startswith("rej-"))
+
+    def test_rejection_without_event_id_uses_content_hash(self):
+        first, _ = rejection_record({"b": 1, "a": 2}, "missing event_id")
+        second, _ = rejection_record({"a": 2, "b": 1}, "missing event_id")
+        self.assertEqual(first, second)
+        self.assertTrue(first.startswith("sha256:"))
+        self.assertNotEqual(first, rejection_record({"a": 3}, "missing event_id")[0])
 
 
 class ContractTests(unittest.TestCase):

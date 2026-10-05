@@ -16,7 +16,7 @@ Ce runbook explique le comportement de Routier dans son périmètre actuel. Il n
 1. Consulter les motifs dans `/api/audit`.
 2. Contrôler que le producteur envoie bien `event_type: vehicle.telemetry` et `schema_version: 1.0`.
 3. Vérifier les timestamps et les bornes de charge avant de modifier les règles métier.
-4. Dans la pile Kafka, inspecter le topic `vehicle.telemetry.invalid.v1` afin de préserver les messages rejetés pour analyse.
+4. Dans la pile Kafka, inspecter le topic `vehicle.telemetry.invalid.v1` afin de préserver les messages rejetés pour analyse. Un même `rejection_id` peut apparaître deux fois après un redémarrage du worker : compter les rejets distincts, pas les messages.
 
 ## Quand le worker redémarre
 
